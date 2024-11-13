@@ -251,4 +251,9 @@ class StreamTransform(InlineMapper):
 
     def extract_fields_from_expression(self, expression: str) -> list[str]:
         """Extract field names from a comma-separated expression."""
-        return [field.strip() for field in expression.split(",")]      
+        if "," in expression:
+        # Split by comma and strip whitespace
+            return [field.strip() for field in expression.split(",")]
+        else:
+        # Return the expression as a single-element list
+            return [expression.strip()] 
