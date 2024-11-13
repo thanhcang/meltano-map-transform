@@ -232,13 +232,13 @@ class StreamTransform(InlineMapper):
             self.stream_maps = {}     
 
 
-    def md5_hash(value: str) -> str:
+    def md5_hash(self,value: str) -> str:
         """Generate an MD5 hash of the given value."""
         if not value:
             return ""
         return hashlib.md5(value.encode("utf-8")).hexdigest()
 
 
-    def extract_fields_from_expression(expression: str) -> list[str]:
+    def extract_fields_from_expression(self, expression: str) -> list[str]:
         """Extract field names from a comma-separated expression."""
         return [field.strip() for field in expression.split(",")]      
