@@ -120,10 +120,15 @@ class StreamTransform(InlineMapper):
 
         # customize
         field_mappings = self.stream_maps.get(stream_id, [])
-        for field_name in field_mappings.keys():
-            if field_name not in schema["properties"]:
-                self.logger.info(f"Adding custom field '{field_name}' to schema.")
-                schema["properties"][field_name] = {"type": ["string", "null"]}
+        for mapping in field_mappings:
+            if not isinstance(mapping, dict):
+                self.logger.error(f"Invalid mapping format: {mapping}. Skipping.")
+                continue
+
+            for field_name in mapping.keys():
+                if field_name not in schema["properties"]:
+                    self.logger.info(f"Adding custom field '{field_name}' to schema.")
+                    schema["properties"][field_name] = {"type": ["string", "null"]}
 
         for stream_map in self.mapper.stream_maps[stream_id]:
             yield singer.SchemaMessage(
