@@ -181,7 +181,8 @@ class StreamTransform(InlineMapper):
     def set_stream_maps_from_env(self):
         """Set the stream_maps from the environment variable MAPPER_STREAM_MAPS."""
         env_stream_maps = os.getenv("MAPPER_STREAM_MAPS", "[]")
-
+        self.logger.info(f"Environment variable MAPPER_STREAM_MAPS: {env_stream_maps}")
+        
         try:
             # Parse the JSON from the environment variable
             parsed_stream_maps = json.loads(env_stream_maps)
