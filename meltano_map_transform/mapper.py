@@ -108,13 +108,22 @@ class StreamTransform(InlineMapper):
             Transformed schema messages.
         """
         self._assert_line_requires(message_dict, requires={"stream", "schema"})
+        schema = message_dict["schema"]
 
+        # Register raw stream schema
         stream_id: str = message_dict["stream"]
         self.mapper.register_raw_stream_schema(
             stream_id,
             message_dict["schema"],
             message_dict.get("key_properties", []),
         )
+
+        # customize
+        field_mappings = self.stream_maps.get(stream_id, {})
+        for field_name in field_mappings.keys():
+            if field_name not in schema["properties"]:
+                self.logger.info(f"Adding custom field '{field_name}' to schema.")
+                schema["properties"][field_name] = {"type": ["string", "null"]}
 
         for stream_map in self.mapper.stream_maps[stream_id]:
             yield singer.SchemaMessage(
