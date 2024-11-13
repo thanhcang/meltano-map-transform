@@ -165,6 +165,9 @@ class StreamTransform(InlineMapper):
                     concatenated_value = "".join(str(record[field]) for field in required_fields)            
                     hashed_value = self.md5_hash(concatenated_value)
                     record[field_name] = hashed_value
+
+                    self.logger.error(f"Key after genereated :  '{field_name}' is '{hashed_value}' ")
+
                 except Exception as e:
                     self.logger.error(f"Error evaluating key expression for '{field_name}' in stream '{stream_id}': {e}")
                     record[field_name] = None
