@@ -138,8 +138,23 @@ class StreamTransform(InlineMapper):
         self._assert_line_requires(message_dict, requires={"stream", "record"})
 
         stream_id: str = message_dict["stream"]
+        record = message_dict["record"]
+
         for stream_map in self.mapper.stream_maps[stream_id]:
             mapped_record = stream_map.transform(message_dict["record"])
+            
+            # custom mapping
+            field_mappings = self.stream_maps[stream_id]
+            for field_name, key_expression in field_mappings.items():
+                try:
+                    # Evaluate the key expression using eval()
+                    hashed_value = eval(key_expression, {"config": self.config, "record": record, "md5": self.md5_hash})
+                    record[field_name] = hashed_value
+                except Exception as e:
+                    self.logger.error(f"Error evaluating key expression for '{field_name}' in stream '{stream_id}': {e}")
+                    record[field_name] = None
+
+
             if mapped_record is not None:
                 yield singer.RecordMessage(
                     stream=stream_map.stream_alias,
