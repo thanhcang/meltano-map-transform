@@ -214,4 +214,11 @@ class StreamTransform(InlineMapper):
 
         except json.JSONDecodeError as e:
             print(f"Error parsing MAPPER_STREAM_MAPS: {e}")
-            self.stream_maps = {}        
+            self.stream_maps = {}     
+
+
+    def md5_hash(value: str) -> str:
+        """Generate an MD5 hash of the given value."""
+        if not value:
+            return ""
+        return hashlib.md5(value.encode("utf-8")).hexdigest()           
