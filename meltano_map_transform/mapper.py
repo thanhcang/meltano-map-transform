@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class StreamTransform(InlineMapper):
     """A map transformer which implements the Stream Maps capability."""
 
-    name = "meltano-map-transformer"
+    name = "meltano-map-transformer-test"
 
     config_jsonschema = th.PropertiesList(
         th.Property(
