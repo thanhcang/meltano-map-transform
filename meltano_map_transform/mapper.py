@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class MD5StreamTransform(InlineMapper):
     """A map transformer that applies MD5 hash transformations based on stream maps."""
 
-    name = "md5-mapper"
+     name = "meltano-map-transformer"
 
     def __init__(self, *args, **kwargs) -> None:
         """Initialize the MD5 inline mapper with configuration from environment variables."""
