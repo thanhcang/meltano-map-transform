@@ -145,11 +145,25 @@ class StreamTransform(InlineMapper):
             mapped_record = stream_map.transform(message_dict["record"])
             
             # custom mapping
-            field_mappings = self.stream_maps[stream_id]
+            field_mappings = self.stream_maps.get(stream_id, {})
             for field_name, key_expression in field_mappings.items():
                 try:
+                    self.logger.debug(f"Evaluating key expression for '{field_name}': {key_expression}")
                     # Evaluate the key expression using eval()
-                    hashed_value = eval(key_expression, {"config": self.config, "record": record, "md5": self.md5_hash})
+                    
+                    # Extract the field names from the expression (e.g., "id,name")
+                    required_fields = self.extract_fields_from_expression(key_expression)
+
+                    # Check for missing fields in the record
+                    # @TODO : need to fix
+                    missing_fields = [field for field in required_fields if field not in record]
+                    if missing_fields:
+                        self.logger.warning(f"Missing fields in record: {missing_fields}")
+                        record[field_name] = None
+                        continue
+
+                    concatenated_value = "".join(str(record[field]) for field in required_fields)            
+                    hashed_value = self.md5_hash(concatenated_value)
                     record[field_name] = hashed_value
                 except Exception as e:
                     self.logger.error(f"Error evaluating key expression for '{field_name}' in stream '{stream_id}': {e}")
@@ -222,4 +236,9 @@ class StreamTransform(InlineMapper):
         """Generate an MD5 hash of the given value."""
         if not value:
             return ""
-        return hashlib.md5(value.encode("utf-8")).hexdigest()           
+        return hashlib.md5(value.encode("utf-8")).hexdigest()
+
+
+    def extract_fields_from_expression(expression: str) -> list[str]:
+        """Extract field names from a comma-separated expression."""
+        return [field.strip() for field in expression.split(",")]      
