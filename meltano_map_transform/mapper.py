@@ -1,104 +1,81 @@
-"""A sample inline mapper app."""
-
-from __future__ import annotations
-
+import hashlib
+import json
+import os
 from typing import TYPE_CHECKING
-
-import singer_sdk.typing as th
 from singer_sdk import _singerlib as singer
 from singer_sdk.helpers._util import utc_now
-from singer_sdk.mapper import PluginMapper
 from singer_sdk.mapper_base import InlineMapper
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from pathlib import PurePath
 
 
-class StreamTransform(InlineMapper):
-    """A map transformer which implements the Stream Maps capability."""
+class MD5StreamTransform(InlineMapper):
+    """A map transformer that applies MD5 hash transformations based on stream maps."""
 
-    name = "meltano-map-transformer-test"
+    name = "md5-mapper"
 
-    config_jsonschema = th.PropertiesList(
-        th.Property(
-            "stream_maps",
-            th.ObjectType(
-                additional_properties=th.CustomType(
-                    {
-                        "type": ["object", "string", "null"],
-                        "properties": {
-                            "__filter__": {"type": ["string", "null"]},
-                            "__source__": {"type": ["string", "null"]},
-                            "__alias__": {"type": ["string", "null"]},
-                            "__else__": {
-                                "type": ["string", "null"],
-                                "enum": [None, "__NULL__"],
-                            },
-                            "__key_properties__": {
-                                "type": ["array", "null"],
-                                "items": {"type": "string"},
-                            },
-                        },
-                        "additionalProperties": {"type": ["string", "null"]},
-                    },
-                ),
-            ),
-            required=True,
-            description="Stream maps",
-        ),
-        th.Property(
-            "flattening_enabled",
-            th.BooleanType(),
-            description=(
-                "'True' to enable schema flattening and automatically expand nested "
-                "properties."
-            ),
-        ),
-        th.Property(
-            "flattening_max_depth",
-            th.IntegerType(),
-            description="The max depth to flatten schemas.",
-        ),
-    ).to_dict()
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the MD5 inline mapper with configuration from environment variables."""
+        super().__init__(*args, **kwargs)
+        # Load stream maps from environment variable
+        env_stream_maps = os.getenv("MAPPER_STREAM_MAPS", "[]")
+        self.stream_maps = json.loads(env_stream_maps)
 
-    def __init__(
+    def md5_hash(self, value: str) -> str:
+        """Generate an MD5 hash of the given value."""
+        if not value:
+            return ""
+        return hashlib.md5(value.encode("utf-8")).hexdigest()
+
+    def map_record_message(
         self,
-        *,
-        config: dict | PurePath | str | list[PurePath | str] | None = None,
-        parse_env_config: bool = False,
-        validate_config: bool = True,
-    ) -> None:
-        """Create a new inline mapper.
+        message_dict: dict,
+    ) -> Generator[singer.Message, None, None]:
+        """Map a record message using MD5 hash transformations."""
+        stream_id: str = message_dict["stream"]
+        record = message_dict["record"]
 
-        Args:
-            config: Mapper configuration. Can be a dictionary, a single path to a
-                configuration file, or a list of paths to multiple configuration
-                files.
-            parse_env_config: Whether to look for configuration values in environment
-                variables.
-            validate_config: True to require validation of config settings.
-        """
-        super().__init__(
-            config=config,
-            parse_env_config=parse_env_config,
-            validate_config=validate_config,
+        # Iterate through each mapping configuration for the stream
+        for stream_map in self.stream_maps:
+            if stream_id in stream_map:
+                field_mappings = stream_map[stream_id]
+
+                for field_name, fields_to_combine in field_mappings.items():
+                    # Split the fields to combine (e.g., "id,name" -> ["id", "name"])
+                    field_list = fields_to_combine.split(",")
+
+                    # Check if 'id' is present and not null for required keys
+                    if "id" in field_list and (not record.get("id")):
+                        record[field_name] = None
+                        continue
+
+                    # Construct the string to hash
+                    combined_value = ""
+                    try:
+                        for field in field_list:
+                            value = str(record.get(field, ""))
+                            combined_value += value
+
+                        # Generate MD5 hash of the combined value
+                        hashed_value = self.md5_hash(combined_value)
+                        record[field_name] = hashed_value
+                    except Exception as e:
+                        self.logger.error(f"Error processing field '{field_name}' for stream '{stream_id}': {e}")
+                        record[field_name] = None
+
+        yield singer.RecordMessage(
+            stream=stream_id,
+            record=record,
+            version=message_dict.get("version"),
+            time_extracted=utc_now(),
         )
-
-        self.mapper = PluginMapper(plugin_config=dict(self.config), logger=self.logger)
 
     def map_schema_message(
         self,
         message_dict: dict,
     ) -> Generator[singer.Message, None, None]:
-        """Map a schema message according to config.
-
-        Args:
-            message_dict: A SCHEMA message JSON dictionary.
-
-        Yields:
-            Transformed schema messages.
-        """
+        """Map a schema message according to the configuration."""
         self._assert_line_requires(message_dict, requires={"stream", "schema"})
 
         stream_id: str = message_dict["stream"]
@@ -107,67 +84,26 @@ class StreamTransform(InlineMapper):
             message_dict["schema"],
             message_dict.get("key_properties", []),
         )
-        for stream_map in self.mapper.stream_maps[stream_id]:
-            yield singer.SchemaMessage(
-                stream_map.stream_alias,
-                stream_map.transformed_schema,
-                stream_map.transformed_key_properties,
-                message_dict.get("bookmark_keys", []),
-            )
-
-    def map_record_message(
-        self,
-        message_dict: dict,
-    ) -> Generator[singer.Message, None, None]:
-        """Map a record message according to config.
-
-        Args:
-            message_dict: A RECORD message JSON dictionary.
-
-        Yields:
-            Transformed record messages.
-        """
-        self._assert_line_requires(message_dict, requires={"stream", "record"})
-
-        stream_id: str = message_dict["stream"]
-        for stream_map in self.mapper.stream_maps[stream_id]:
-            mapped_record = stream_map.transform(message_dict["record"])
-            if mapped_record is not None:
-                yield singer.RecordMessage(
-                    stream=stream_map.stream_alias,
-                    record=mapped_record,
-                    version=message_dict.get("version"),
-                    time_extracted=utc_now(),
-                )
+        yield singer.SchemaMessage(
+            stream_id,
+            message_dict["schema"],
+            message_dict.get("key_properties", []),
+            message_dict.get("bookmark_keys", []),
+        )
 
     def map_state_message(self, message_dict: dict) -> list[singer.Message]:
-        """Do nothing to the message.
-
-        Args:
-            message_dict: A STATE message JSON dictionary.
-
-        Returns:
-            The same state message
-        """
+        """Return the state message unchanged."""
         return [singer.StateMessage(value=message_dict["value"])]
 
     def map_activate_version_message(
         self,
         message_dict: dict,
     ) -> Generator[singer.Message, None, None]:
-        """Duplicate the message or alias the stream name as defined in configuration.
-
-        Args:
-            message_dict: An ACTIVATE_VERSION message JSON dictionary.
-
-        Yields:
-            An ACTIVATE_VERSION for each duplicated or aliased stream.
-        """
+        """Return an ACTIVATE_VERSION message."""
         self._assert_line_requires(message_dict, requires={"stream", "version"})
 
         stream_id: str = message_dict["stream"]
-        for stream_map in self.mapper.stream_maps[stream_id]:
-            yield singer.ActivateVersionMessage(
-                stream=stream_map.stream_alias,
-                version=message_dict["version"],
-            )
+        yield singer.ActivateVersionMessage(
+            stream=stream_id,
+            version=message_dict["version"],
+        )
