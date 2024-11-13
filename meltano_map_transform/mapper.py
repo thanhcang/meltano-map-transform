@@ -9,6 +9,8 @@ from singer_sdk import _singerlib as singer
 from singer_sdk.helpers._util import utc_now
 from singer_sdk.mapper import PluginMapper
 from singer_sdk.mapper_base import InlineMapper
+import json
+import os
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -44,7 +46,7 @@ class StreamTransform(InlineMapper):
                     },
                 ),
             ),
-            required=True,
+            required=False,
             description="Stream maps",
         ),
         th.Property(
@@ -79,6 +81,7 @@ class StreamTransform(InlineMapper):
                 variables.
             validate_config: True to require validation of config settings.
         """
+
         super().__init__(
             config=config,
             parse_env_config=parse_env_config,
@@ -86,6 +89,8 @@ class StreamTransform(InlineMapper):
         )
 
         self.mapper = PluginMapper(plugin_config=dict(self.config), logger=self.logger)
+        self.stream_maps = {}
+        self.set_stream_maps_from_env()
 
     def map_schema_message(
         self,
@@ -107,6 +112,7 @@ class StreamTransform(InlineMapper):
             message_dict["schema"],
             message_dict.get("key_properties", []),
         )
+
         for stream_map in self.mapper.stream_maps[stream_id]:
             yield singer.SchemaMessage(
                 stream_map.stream_alias,
@@ -171,3 +177,23 @@ class StreamTransform(InlineMapper):
                 stream=stream_map.stream_alias,
                 version=message_dict["version"],
             )
+
+    def set_stream_maps_from_env(self):
+        """Set the stream_maps from the environment variable MAPPER_STREAM_MAPS."""
+        env_stream_maps = os.getenv("MAPPER_STREAM_MAPS", "[]")
+
+        try:
+            # Parse the JSON from the environment variable
+            parsed_stream_maps = json.loads(env_stream_maps)
+
+            # Iterate over the parsed stream maps and update the configuration
+            for stream_map in parsed_stream_maps:
+                for stream_name, mappings in stream_map.items():
+                    if stream_name not in self.stream_maps:
+                        self.stream_maps[stream_name] = {}
+                    # Update the stream mappings
+                    self.stream_maps[stream_name].update(mappings)
+
+        except json.JSONDecodeError as e:
+            print(f"Error parsing MAPPER_STREAM_MAPS: {e}")
+            self.stream_maps = {}        
