@@ -224,7 +224,7 @@ class StreamTransform(InlineMapper):
         """Set the stream_maps from the environment variable MAPPER_STREAM_MAPS."""
         env_stream_maps = os.getenv("MAPPER_STREAM_MAPS", "[]")
         self.logger.info(f"Environment variable MAPPER_STREAM_MAPS: {env_stream_maps}")
-        
+
         try:
             # Parse the JSON from the environment variable
             parsed_stream_maps = json.loads(env_stream_maps)
@@ -234,12 +234,20 @@ class StreamTransform(InlineMapper):
                 for stream_name, mappings in stream_map.items():
                     if stream_name not in self.stream_maps:
                         self.stream_maps[stream_name] = []
-                    # Update the stream mappings
-                    self.stream_maps[stream_name].update(mappings)
+
+                    # Ensure mappings are key-value pairs
+                    if isinstance(mappings, list):
+                        for mapping in mappings:
+                            if isinstance(mapping, dict):
+                                self.stream_maps[stream_name].append(mapping)
+                            else:
+                                self.logger.error(f"Invalid mapping format: {mapping}. Skipping.")
+                    else:
+                        self.logger.error(f"Invalid mappings format for stream '{stream_name}': {mappings}")
 
         except json.JSONDecodeError as e:
-            print(f"Error parsing MAPPER_STREAM_MAPS: {e}")
-            self.stream_maps = {}     
+            self.logger.error(f"Error parsing MAPPER_STREAM_MAPS: {e}")
+            self.stream_maps = {}
 
 
     def md5_hash(self,value: str) -> str:
