@@ -156,37 +156,28 @@ class StreamTransform(InlineMapper):
             # custom mapping
             if mapped_record is not None:
                 field_mappings = self.stream_maps.get(stream_id, {})
-                for field_name, key_expression in field_mappings.items():
-                    try:
-                        self.logger.debug(f"Evaluating key expression for '{field_name}': {key_expression}")
-                        # Evaluate the key expression using eval()
-                        
-                        # Extract the field names from the expression (e.g., "id,name")
-                        required_fields = self.extract_fields_from_expression(key_expression)
+                for mapping in field_mappings.items():
+                    for field_name, key_expression in mapping.items():
+                        try:
+                            self.logger.debug(f"Evaluating key expression for '{field_name}': {key_expression}")
+                            
+                            # Extract the field names from the expression (e.g., "id,name")
+                            required_fields = self.extract_fields_from_expression(key_expression)
+                            field_values = [record.get(field) for field in required_fields]
+                            if all(value is None or value == "" for value in field_values):
+                                self.logger.warning(f"All required fields are empty for '{field_name}': {required_fields}")
+                                mapped_record[field_name] = None
+                                continue
 
-                        # Check for missing fields in the record
-                        # @TODO : need to fix
-                        # missing_fields = [field for field in required_fields if field not in record]
-                        # if missing_fields:
-                        #     self.logger.warning(f"Missing fields in record: {missing_fields}")
-                        #     mapped_record[field_name] = None
-                        #     continue
+                            concatenated_value = "".join(str(record.get(field, "")) for field in required_fields)            
+                            hashed_value = self.md5_hash(concatenated_value)
+                            mapped_record[field_name] = hashed_value
 
-                        field_values = [record.get(field) for field in required_fields]
-                        if all(value is None or value == "" for value in field_values):
-                            self.logger.warning(f"All required fields are empty for '{field_name}': {required_fields}")
+                            # self.logger.info(f"Key after genereated :  '{field_name}' is '{hashed_value}' ")
+
+                        except Exception as e:
+                            self.logger.error(f"Error evaluating key expression for '{field_name}' in stream '{stream_id}': {e}")
                             mapped_record[field_name] = None
-                            continue
-
-                        concatenated_value = "".join(str(record.get(field, "")) for field in required_fields)            
-                        hashed_value = self.md5_hash(concatenated_value)
-                        mapped_record[field_name] = hashed_value
-
-                        # self.logger.info(f"Key after genereated :  '{field_name}' is '{hashed_value}' ")
-
-                    except Exception as e:
-                        self.logger.error(f"Error evaluating key expression for '{field_name}' in stream '{stream_id}': {e}")
-                        mapped_record[field_name] = None
 
 
             if mapped_record is not None:
