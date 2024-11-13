@@ -155,7 +155,7 @@ class StreamTransform(InlineMapper):
             
             # custom mapping
             if mapped_record is not None:
-                field_mappings = self.stream_maps.get(stream_id, {})
+                field_mappings = self.stream_maps.get(stream_id, [])
                 for mapping in field_mappings:
                     for field_name, key_expression in mapping.items():
                         try:
