@@ -119,7 +119,7 @@ class StreamTransform(InlineMapper):
         )
 
         # customize
-        field_mappings = self.stream_maps.get(stream_id, {})
+        field_mappings = self.stream_maps.get(stream_id, [])
         for field_name in field_mappings.keys():
             if field_name not in schema["properties"]:
                 self.logger.info(f"Adding custom field '{field_name}' to schema.")
