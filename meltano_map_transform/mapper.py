@@ -163,7 +163,7 @@ class StreamTransform(InlineMapper):
                             mapped_record[field_name] = None
                             continue
 
-                        concatenated_value = "".join(str(record[field]) for field in required_fields)            
+                        concatenated_value = "".join(str(record.get(field, "")) for field in required_fields)            
                         hashed_value = self.md5_hash(concatenated_value)
                         mapped_record[field_name] = hashed_value
 
