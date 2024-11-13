@@ -167,8 +167,13 @@ class StreamTransform(InlineMapper):
                         # Check for missing fields in the record
                         # @TODO : need to fix
                         missing_fields = [field for field in required_fields if field not in record]
-                        if missing_fields:
-                            self.logger.warning(f"Missing fields in record: {missing_fields}")
+                        # if missing_fields:
+                        #     self.logger.warning(f"Missing fields in record: {missing_fields}")
+                        #     mapped_record[field_name] = None
+                        #     continue
+
+                        if all(value is None or value == "" for value in field_values):
+                            self.logger.warning(f"All required fields are empty for '{field_name}': {required_fields}")
                             mapped_record[field_name] = None
                             continue
 
