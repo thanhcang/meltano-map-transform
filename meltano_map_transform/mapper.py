@@ -11,6 +11,7 @@ from singer_sdk.mapper import PluginMapper
 from singer_sdk.mapper_base import InlineMapper
 import json
 import os
+import hashlib
 
 if TYPE_CHECKING:
     from collections.abc import Generator
