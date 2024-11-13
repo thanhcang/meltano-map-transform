@@ -92,6 +92,8 @@ class StreamTransform(InlineMapper):
         self.stream_maps = {}
         self.set_stream_maps_from_env()
 
+        self.logger.info("Makini mapper: working ")
+
     def map_schema_message(
         self,
         message_dict: dict,
