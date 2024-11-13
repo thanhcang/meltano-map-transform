@@ -233,7 +233,7 @@ class StreamTransform(InlineMapper):
             for stream_map in parsed_stream_maps:
                 for stream_name, mappings in stream_map.items():
                     if stream_name not in self.stream_maps:
-                        self.stream_maps[stream_name] = {}
+                        self.stream_maps[stream_name] = []
                     # Update the stream mappings
                     self.stream_maps[stream_name].update(mappings)
 
