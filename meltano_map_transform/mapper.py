@@ -227,8 +227,8 @@ class StreamTransform(InlineMapper):
 
     def set_stream_maps_from_env(self):
         """Set the stream_maps from the environment variable MAPPER_STREAM_MAPS."""
-        env_stream_maps = os.getenv("MAPPER_STREAM_MAPS", "[]")
-        self.logger.info(f"Environment variable MAPPER_STREAM_MAPS: {env_stream_maps}")
+        env_stream_maps = os.getenv("MAPPER_MAKINI_KEYS", "[]")
+        self.logger.info(f"Environment variable MAPPER_MAKINI_KEYS: {env_stream_maps}")
 
         try:
             # Parse the JSON from the environment variable
@@ -257,9 +257,12 @@ class StreamTransform(InlineMapper):
 
     def md5_hash(self,value: str) -> str:
         """Generate an MD5 hash of the given value."""
+        hex_key = os.getenv("MAPPTER_MAKINI_HEXKEY")
         if not value:
             return ""
-        return hashlib.md5(value.encode("utf-8")).hexdigest()
+        
+        key_md5 = hashlib.md5(value.encode("utf-8")).hexdigest();
+        return str(hex_key) + str(key_md5)
 
 
     def extract_fields_from_expression(self, expression: str) -> list[str]:
