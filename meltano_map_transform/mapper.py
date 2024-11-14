@@ -23,7 +23,7 @@ class StreamTransform(InlineMapper):
 
     name = "meltano-map-transformer"
 
-    collectionKeys = dict(
+    collection_keys = dict(
         organizationKey='01',
         siteKey='02',
         locationKey='03',
@@ -239,8 +239,10 @@ class StreamTransform(InlineMapper):
                                 continue
 
                             concatenated_value = "".join(str(record.get(field, "")) for field in required_fields)
-                            collectionKey = collectionKey.get(field_name, '99');            
-                            hashed_value = self.md5_hash(collectionKey,concatenated_value)
+                            collection_key = self.collection_keys.get(field_name, '99'); 
+                            self.logger.info(f"collection key is '{collection_key}'");
+
+                            hashed_value = self.md5_hash(collection_key,concatenated_value)
                             mapped_record[field_name] = hashed_value
 
                             # self.logger.info(f"Key after genereated :  '{field_name}' is '{hashed_value}' ")
@@ -327,7 +329,7 @@ class StreamTransform(InlineMapper):
             return ""
         
         key_md5 = hashlib.md5(value.encode("utf-8")).hexdigest();
-        return str(collectionKey) + str(hex_key) + str(key_md5)
+        return f"{collectionKey}{hex_key}{key_md5}"
 
 
     def extract_fields_from_expression(self, expression: str) -> list[str]:
