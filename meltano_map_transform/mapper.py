@@ -23,6 +23,70 @@ class StreamTransform(InlineMapper):
 
     name = "meltano-map-transformer"
 
+    collectionKeys = dict(
+        organizationKey='01',
+        siteKey='02',
+        locationKey='03',
+        storeRoomKey='04',
+        accountKey='05',
+        teamKey='06',
+        laborKey='07',
+        userKey='08',
+        statusKey='09',
+        taxKey='10',
+        currencyKey='11',
+        exchangeRateKey='12',
+        uomKey='13',
+        companyKey='14',
+        vendorKey='15',
+        customerKey='16',
+        
+        # EAM
+        assetKey='17',
+        assetDownTimeKey='18',
+        assetTemplateKey='19',
+        meterKey='20',
+        meterReadingKey='21',
+        documentKey='22',
+        materialKey='23',
+        pmKey='24',
+        workOrderKey='25',
+        serviceRequestKey='26',
+
+        # ERP-WMS
+        stockKey='27',
+        productGroupKey='28',
+        productKey='29',
+        saleOrderKey='30',
+        purchaseOrderKey='31',
+
+        # WMS
+        stockTransferKey='32',
+        shipmentOrderKey='33',
+        stockOrderKey='34',
+
+        # ERP
+        projectKey='35',
+        receivingKey='36',
+        invoiceKey='37',
+        receiptKey='38',
+        bomKey='39',
+
+        # Nested
+        lineItemKey='40',
+
+        purchaseQuotationKey='41',
+        purchaseRequisitionKey='42',
+        stockAdjustmentKey='43',
+        returnOrderKey='44',
+        orderTransferKey='44',
+        fulfillmentKey='45',
+
+        # General
+        generalSchemaKey='99'
+    )
+
+
     config_jsonschema = th.PropertiesList(
         th.Property(
             "stream_maps",
@@ -174,8 +238,9 @@ class StreamTransform(InlineMapper):
                                 mapped_record[field_name] = None
                                 continue
 
-                            concatenated_value = "".join(str(record.get(field, "")) for field in required_fields)            
-                            hashed_value = self.md5_hash(concatenated_value)
+                            concatenated_value = "".join(str(record.get(field, "")) for field in required_fields)
+                            collectionKey = collectionKey.get(field_name, '99');            
+                            hashed_value = self.md5_hash(collectionKey,concatenated_value)
                             mapped_record[field_name] = hashed_value
 
                             # self.logger.info(f"Key after genereated :  '{field_name}' is '{hashed_value}' ")
@@ -255,14 +320,14 @@ class StreamTransform(InlineMapper):
             self.stream_maps = {}
 
 
-    def md5_hash(self,value: str) -> str:
+    def md5_hash(self, collectionKey: str,value: str) -> str:
         """Generate an MD5 hash of the given value."""
         hex_key = os.getenv("MAPPTER_MAKINI_HEXKEY")
         if not value:
             return ""
         
         key_md5 = hashlib.md5(value.encode("utf-8")).hexdigest();
-        return str(hex_key) + str(key_md5)
+        return str(collectionKey) + str(hex_key) + str(key_md5)
 
 
     def extract_fields_from_expression(self, expression: str) -> list[str]:
